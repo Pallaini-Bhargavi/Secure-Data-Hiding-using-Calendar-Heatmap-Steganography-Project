@@ -8,7 +8,6 @@ import java.util.Base64;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
-// import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -17,6 +16,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.example.demo.entity.User;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.KeyService;
+import com.example.demo.service.MailService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -33,6 +33,9 @@ public class AuthController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private MailService mailService;
+    
     // ================= REGISTER =================
 
     @GetMapping("/register")
@@ -89,8 +92,6 @@ public class AuthController {
         return "redirect:/register";
     }
 }
-
-
     // ================= LOGIN =================
 
     @GetMapping("/login")
@@ -99,6 +100,7 @@ public class AuthController {
     }
 
    @PostMapping("/login")
+    @SuppressWarnings("CallToPrintStackTrace")
     public String login(@RequestParam String email,
                     @RequestParam String password,
                     RedirectAttributes redirectAttributes,
@@ -132,36 +134,55 @@ public class AuthController {
     }
 
     // WRONG PASSWORD
-    if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+     if (!passwordEncoder.matches(password, user.getPasswordHash())) {
 
-        int attempts = user.getLoginFailAttempts() + 1;
-        user.setLoginFailAttempts(attempts);
+    int attempts = user.getLoginFailAttempts() + 1;
+    user.setLoginFailAttempts(attempts);
 
-        if (attempts >= 3) {
-            LocalDateTime lockUntil =
-                    LocalDateTime.now().plusHours(3);
-            user.setLoginLockedUntil(lockUntil);
-            userRepository.save(user);
+    // ✅ SEND MAIL FOR EVERY WRONG ATTEMPT
+    try {
+    mailService.sendTextMail(
+    user.getUserEmail(),
+    "⚠️ Login Attempt Failed",
+    """
+    A failed login attempt was detected.
+    
+    Attempt: """ + attempts + " / 3\n" +
+    "Time: " + LocalDateTime.now().toString()
+);
+} catch (Exception e) {
+    
+    e.printStackTrace();
+}
 
-            DateTimeFormatter formatter =
-                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-
-            redirectAttributes.addFlashAttribute(
-                    "loginError",
-                    "Account locked until " +
-                    lockUntil.format(formatter)
-            );
-            return "redirect:/login";
-        }
+    // 🔒 LOCK AFTER 3 ATTEMPTS
+    if (attempts >= 3) {
+        LocalDateTime lockUntil =
+                LocalDateTime.now().plusHours(3);
+        user.setLoginLockedUntil(lockUntil);
 
         userRepository.save(user);
 
         redirectAttributes.addFlashAttribute(
                 "loginError",
-                "Invalid password. Attempt " + attempts + " / 3"
+                "Account locked until " +
+                lockUntil.format(
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
         );
+
         return "redirect:/login";
     }
+
+    // ✅ SAVE ATTEMPTS (IMPORTANT)
+    userRepository.save(user);
+
+    redirectAttributes.addFlashAttribute(
+            "loginError",
+            "Invalid password. Attempt " + attempts + " / 3"
+    );
+
+    return "redirect:/login";
+}
 
     // ✅ SUCCESS LOGIN
     user.setLoginFailAttempts(0);

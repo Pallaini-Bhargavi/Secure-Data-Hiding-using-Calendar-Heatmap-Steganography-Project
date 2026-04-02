@@ -7,13 +7,6 @@ public class HeatmapGenerator {
 
     // Calendar heatmap capacity
     public static final int TILES_PER_HEATMAP = 365;
-
-    /**
-     * Generates one or more heatmaps.
-     * - Each heatmap has exactly 365 tiles
-     * - Each symbol occupies exactly 1 tile
-     * - If symbols exceed 365, new heatmap is created
-     */
     public static List<HeatmapLayout> generateHeatmaps(
             List<String> symbols,
             List<Integer> permutation) {

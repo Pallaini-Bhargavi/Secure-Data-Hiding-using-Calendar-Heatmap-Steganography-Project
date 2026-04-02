@@ -67,6 +67,13 @@
 .account-dropdown .item.logout:hover {
     background: #fee2e2;
 }
+/* FORCE override everything */
+#sendBtn.clicked {
+    background: #e2b813 !important;
+    color: black !important;
+    pointer-events: none !important; 
+    opacity: 0.9;
+}
 </style>
 
 </head>
@@ -155,6 +162,7 @@
             top:10px;
             right:14px;
             cursor:pointer;
+            color: #111;
         ">✖</span>
         <div id="errorMsg"></div>
     </div>
@@ -187,6 +195,7 @@
             cursor:pointer;
             font-size:18px;
             font-weight:700;
+            color: #111;
         ">✖</span>
         <div>Heatmap sent successfully.</div>
     </div>
@@ -226,7 +235,7 @@
         <img id="previewImage"
              style="width:100%;border-radius:12px;margin-bottom:16px;display:none;">
 
-        <button class="btn blue" onclick="sendHeatmap()">Send</button>
+        <button id="sendBtn" class="btn blue" onclick="sendHeatmap()">Send</button>
     </div>
 </div>
 
@@ -269,16 +278,24 @@ function showSuccess() {
     document.getElementById("successPopup").style.display = "flex";
 }
 
-function closeSuccess() {
-    document.getElementById("successPopup").style.display = "none";
-}
-
 function closePreview() {
     document.getElementById("previewModal").style.display = "none";
 }
 
 /* ---------- ACTIONS ---------- */
 function sendHeatmap() {
+
+    const btn = document.getElementById("sendBtn");
+
+    if (btn.disabled) return;
+
+    // 🔥 REMOVE BLUE STYLE
+    btn.classList.remove("blue");
+
+    // APPLY CLICKED STYLE
+    btn.classList.add("clicked");
+    btn.disabled = true;
+    btn.innerText = "Sent";
 
     fetch("/api/encode/send", {
         method: "POST",
@@ -291,12 +308,30 @@ function sendHeatmap() {
         if (!res.ok) {
             return res.text().then(msg => { throw msg; });
         }
+
         document.getElementById("previewModal").style.display = "none";
         showSuccess();
     })
     .catch(err => {
         showError(err);
+
+        // revert if error
+        btn.classList.remove("clicked");
+        btn.classList.add("blue");   
+        btn.disabled = false;
+        btn.innerText = "Send";
     });
+}
+
+function closeSuccess() {
+    document.getElementById("successPopup").style.display = "none";
+
+    const btn = document.getElementById("sendBtn");
+
+    btn.classList.remove("clicked");
+    btn.classList.add("blue"); 
+    btn.disabled = false;
+    btn.innerText = "Send";
 }
 
 function toggleAccountDropdown() {

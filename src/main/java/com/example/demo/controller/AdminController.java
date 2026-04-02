@@ -15,8 +15,9 @@ import com.example.demo.repository.AdminRepository;
 import com.example.demo.repository.ResetPasswordRequestRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.AdminService;
-// import com.example.demo.service.MailService;
+import com.example.demo.service.MailService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
 @Controller
@@ -34,8 +35,8 @@ public class AdminController {
     @Autowired
     private ResetPasswordRequestRepository resetRepo;
 
-    // @Autowired
-    // private MailService mailService;
+    @Autowired
+    private MailService mailService;
 
     /* ================= ADMIN LOGIN PAGE ================= */
     @GetMapping("/admin-login")
@@ -44,11 +45,11 @@ public class AdminController {
     }
 
     /* ================= ADMIN LOGIN PROCESS ================= */
-    @PostMapping("/admin-login")
-    public String adminLogin(@RequestParam String email,
-                             @RequestParam String password,
-                             HttpSession session,
-                             RedirectAttributes redirectAttributes) {
+    @PostMapping("/admin-login")public String adminLogin(@RequestParam String email,
+                         @RequestParam String password,
+                         HttpSession session,
+                         RedirectAttributes redirectAttributes,
+                         HttpServletRequest request) {
 
         if (email == null || email.trim().isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "Admin email is required.");
@@ -81,31 +82,51 @@ public class AdminController {
         }
 
         // ❌ WRONG PASSWORD
-        if (!adminService.login(email, password)) {
+       if (!adminService.login(email, password)) {
 
-            int attempts = admin.getLoginAttempts() + 1;
-            admin.setLoginAttempts(attempts);
+    int attempts = admin.getLoginAttempts() + 1;
+    admin.setLoginAttempts(attempts);
 
-            if (attempts >= 3) {
-                admin.setLockedUntil(LocalDateTime.now().plusHours(48));
-                adminRepository.save(admin);
+    //  SEND MAIL FOR EVERY WRONG ATTEMPT
+try {
+    mailService.send(
+        admin.getEmail(),
+        "⚠️ Security Alert: Suspicious Login Attempt",
+        """
+        We detected multiple failed login attempts on your admin account.
+        
+        If this was you, you can ignore this message.
+        
+        If you did not attempt to login, please ensure your credentials are secure.
+        
+        Time: """ + LocalDateTime.now() + "\n" +
+        "IP Address: " + request.getRemoteAddr()
+    );
 
-                redirectAttributes.addFlashAttribute(
-                        "error",
-                        "Account locked for 48 hours due to 3 failed attempts."
-                );
-                return "redirect:/admin-login";
-            }
+} catch (Exception e) {
+}
 
-            adminRepository.save(admin);
-            redirectAttributes.addFlashAttribute(
-                    "error",
-                    "Invalid password. Attempt " + attempts + " / 3"
-            );
-            return "redirect:/admin-login";
-        }
+    // 🔒 LOCK AFTER 3 ATTEMPTS
+    if (attempts >= 3) {
+        admin.setLockedUntil(LocalDateTime.now().plusHours(48));
+        adminRepository.save(admin);
 
-        // ✅ SUCCESS LOGIN
+        redirectAttributes.addFlashAttribute(
+                "error",
+                "Account locked for 48 hours due to 3 failed attempts."
+        );
+        return "redirect:/admin-login";
+    }
+
+    adminRepository.save(admin);
+
+    redirectAttributes.addFlashAttribute(
+            "error",
+            "Invalid password. Attempt " + attempts + " / 3"
+    );
+    return "redirect:/admin-login";
+}
+        //  SUCCESS LOGIN
         admin.setLoginAttempts(0);
         admin.setLockedUntil(null);
         adminRepository.save(admin);

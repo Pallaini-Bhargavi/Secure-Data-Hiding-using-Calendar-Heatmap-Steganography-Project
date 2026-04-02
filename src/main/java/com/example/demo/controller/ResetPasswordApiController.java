@@ -16,7 +16,7 @@ import com.example.demo.entity.ResetPasswordRequest;
 import com.example.demo.entity.User;
 import com.example.demo.repository.ResetPasswordRequestRepository;
 import com.example.demo.repository.UserRepository;
-
+import com.example.demo.service.MailService;
 
 @RestController
 @RequestMapping("/api")
@@ -28,13 +28,14 @@ public class ResetPasswordApiController {
     @Autowired
     private ResetPasswordRequestRepository resetRepo;
 
-    // @Autowired
-    // private MailService mailService;
+    @Autowired
+    private MailService mailService;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     @PostMapping("/reset-password")
+    @SuppressWarnings("CallToPrintStackTrace")
     public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordDTO dto) {
 
     String email = dto.getEmail().trim().toLowerCase();
@@ -96,6 +97,20 @@ public class ResetPasswordApiController {
 
     resetRepo.save(req);
 
+    // 📧 SEND ADMIN MAIL
+try {
+    mailService.sendTextMail(
+        "calendarheatmap@gmail.com",
+        "Password Reset Approval Request",
+        "User with email " + email +
+        " has requested a password reset.\n\n" +
+        "Please login to admin dashboard to approve or reject."
+    );
+} catch (Exception e) {
+    e.printStackTrace();
+}
+
+
     // 🔒 RESET PASSWORD LOCK (USER LEVEL)
 if (user.getResetLockedUntil() != null &&
     user.getResetLockedUntil().isAfter(LocalDateTime.now())) {
@@ -106,10 +121,7 @@ if (user.getResetLockedUntil() != null &&
     );
 }
     return ResponseEntity.ok("Approval request sent to admin.");
-
-    
     
 }
-
 
 }

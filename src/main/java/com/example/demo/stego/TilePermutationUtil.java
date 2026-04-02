@@ -17,12 +17,7 @@ public class TilePermutationUtil {
 
         long seed = deriveSeed(aesKey);
 
-        System.out.println("Permutation Seed: " + seed);
-
         Collections.shuffle(indices, new Random(seed));
-
-        System.out.println("Permutation (first 20): "
-                + indices.subList(0, Math.min(20, indices.size())));
 
         return indices;
     }

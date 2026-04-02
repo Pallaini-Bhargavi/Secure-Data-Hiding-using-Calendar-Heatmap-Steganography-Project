@@ -17,13 +17,13 @@ public class ECCService {
             byte[] senderPrivateKeyBytes,
             byte[] receiverPublicKeyBytes) throws Exception {
 
-        System.out.println("\n=== CHECKPOINT 2 : ECC ===");
+        System.out.println("\n=== ENCODING START ===");
 
-        System.out.println("Sender Private Key (Base64):");
+        System.out.println("Sender Private Key :");
         System.out.println(Base64.getEncoder()
                 .encodeToString(senderPrivateKeyBytes));
 
-        System.out.println("Receiver Public Key (Base64):");
+        System.out.println("Receiver Public Key :");
         System.out.println(Base64.getEncoder()
                 .encodeToString(receiverPublicKeyBytes));
 
@@ -44,12 +44,59 @@ public class ECCService {
         byte[] sharedSecret =
                 keyAgreement.generateSecret();
 
-        System.out.println("ECC Shared Secret (Base64):");
+        System.out.println("ECC Shared Secret :");
         System.out.println(Base64.getEncoder()
                 .encodeToString(sharedSecret));
 
-        System.out.println("=== ECC DONE ===\n");
+        byte[] aesKey =
+        AESUtil.deriveAESKey(sharedSecret);
+    
+         System.out.println("AES KEY :");
+         System.out.println(Base64.getEncoder().encodeToString(aesKey));
 
         return sharedSecret;
     }
+    public byte[] generateSharedSecretForDecoding(
+        byte[] receiverPrivateKeyBytes,
+        byte[] senderPublicKeyBytes) throws Exception {
+
+    System.out.println("=== DECODING START ===");
+
+    System.out.println("Receiver Private Key :");
+    System.out.println(Base64.getEncoder()
+            .encodeToString(receiverPrivateKeyBytes));
+
+    System.out.println("Sender Public Key :");
+    System.out.println(Base64.getEncoder()
+            .encodeToString(senderPublicKeyBytes));
+
+    KeyFactory keyFactory = KeyFactory.getInstance("EC");
+
+    PrivateKey privateKey = keyFactory.generatePrivate(
+            new PKCS8EncodedKeySpec(receiverPrivateKeyBytes));
+
+    PublicKey publicKey = keyFactory.generatePublic(
+            new X509EncodedKeySpec(senderPublicKeyBytes));
+
+    KeyAgreement keyAgreement =
+            KeyAgreement.getInstance("ECDH");
+
+    keyAgreement.init(privateKey);
+    keyAgreement.doPhase(publicKey, true);
+
+    byte[] sharedSecret =
+            keyAgreement.generateSecret();
+
+    System.out.println("ECC Shared Secret :");
+    System.out.println(Base64.getEncoder()
+            .encodeToString(sharedSecret));
+
+    byte[] aesKey =
+        AESUtil.deriveAESKey(sharedSecret);
+    
+    System.out.println("AES KEY :");
+    System.out.println(Base64.getEncoder().encodeToString(aesKey));
+
+    return sharedSecret;
+}
 }

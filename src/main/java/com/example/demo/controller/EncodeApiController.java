@@ -41,7 +41,7 @@ public class EncodeApiController {
     private MailService mailService;
 
     @PostMapping(value = "/generate", produces = "image/png")
-public ResponseEntity<?> generateHeatmap(
+        public ResponseEntity<?> generateHeatmap(
         @RequestBody EncodeRequest request,
         HttpSession session) throws Exception {
 
@@ -74,6 +74,8 @@ public ResponseEntity<?> generateHeatmap(
                 .body("Receiver email does not exist.");
     }
 
+    long startTime = System.currentTimeMillis();
+
     byte[] senderPrivateKey =
             Base64.getDecoder().decode(base64PrivateKey);
 
@@ -91,9 +93,8 @@ public ResponseEntity<?> generateHeatmap(
     String securedText =
         "CHS::" + request.getPlaintext();
 
-byte[] plaintextBytes =
+    byte[] plaintextBytes =
         securedText.getBytes("UTF-8");
-
 
     List<HeatmapLayout> layouts =
             pipelineService.encode(plaintextBytes, aesKey);
@@ -104,14 +105,23 @@ byte[] plaintextBytes =
     byte[] png =
             PngMetadataUtil.writeWithMetadata(
                     image,
-                    sender.getPublicKey(), // ✅ CORRECT
+                    sender.getPublicKey(), 
                     layouts.size());
 
-    // ✅ STORE FOR SEND STEP
     session.setAttribute("PREVIEW_HEATMAP", png);
     session.setAttribute("PREVIEW_RECEIVER", receiver.getUserEmail());
+double messageKB = Math.round((plaintextBytes.length / 1024.0) * 100.0) / 100.0;
+double heatmapKB = Math.round((png.length / 1024.0) * 100.0) / 100.0;
 
-    // ❌ NO MAIL HERE
+long endTime = System.currentTimeMillis();
+long encodingTime = endTime - startTime;
+
+System.out.println("\n===== PERFORMANCE METRICS =====");
+System.out.println("MESSAGE SIZE (KB): " + messageKB);
+System.out.println("HEATMAP SIZE (KB): " + heatmapKB);
+System.out.println("ENCODING TIME (ms): " + encodingTime);
+System.out.println("===== ENCODING DONE =====");
+
     return ResponseEntity
             .ok()
             .header("Content-Type", "image/png")
@@ -152,7 +162,7 @@ public ResponseEntity<?> sendHeatmap(HttpSession session) throws Exception {
     // cleanup
     session.removeAttribute("PREVIEW_HEATMAP");
     session.removeAttribute("PREVIEW_RECEIVER");
-
+    
     return ResponseEntity.ok().build();
 }
 }
