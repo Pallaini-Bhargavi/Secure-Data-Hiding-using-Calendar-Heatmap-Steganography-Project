@@ -47,10 +47,8 @@ public class MailService {
 
             Response response = sg.api(request);
 
-            System.out.println("Mail sent: " + response.getStatusCode());
-
         } catch (Exception e) {
-            System.out.println("SendGrid error: " + e.getMessage());
+           System.out.println("Mail error: " + e.getMessage());
         }
     }
 
@@ -74,7 +72,7 @@ public class MailService {
             sg.api(request);
 
         } catch (Exception e) {
-            System.out.println("SendGrid error: " + e.getMessage());
+            System.out.println("Mail error: " + e.getMessage());
         }
     }
 }
