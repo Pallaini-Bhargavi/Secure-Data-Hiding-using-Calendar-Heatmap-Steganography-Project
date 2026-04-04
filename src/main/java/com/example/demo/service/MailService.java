@@ -1,90 +1,72 @@
 package com.example.demo.service;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
-import jakarta.mail.internet.MimeMessage;
+import com.sendgrid.*;
 
 @Service
 public class MailService {
 
-    @Autowired
-    private JavaMailSender mailSender;
+    private final String FROM_EMAIL = "calendarheatmap@gmail.com";
 
-    public void sendMail(String to, String subject, String body) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject(subject);
-        message.setText(body);
-        mailSender.send(message);
-    }
-    public void send(String to, String subject, String body) {
+    // 📩 Send heatmap with attachment
+    public void sendHeatmapMail(String to, String subject, String body, byte[] imageBytes) {
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject(subject);
-        message.setText(body);
+        try {
+            Email from = new Email(FROM_EMAIL);
+            Email toEmail = new Email(to);
 
-        mailSender.send(message);
-    }
+            Content content = new Content("text/plain", body);
+            Mail mail = new Mail(from, subject, toEmail, content);
 
-    @SuppressWarnings("null")
-public void sendHeatmapMail(
-            String to,
-            String subject,
-            String body,
-            byte[] imageBytes) throws Exception {
+            // attachment
+            Attachments attachment = new Attachments();
+            attachment.setContent(Base64.getEncoder().encodeToString(imageBytes));
+            attachment.setType("image/png");
+            attachment.setFilename("heatmap.png");
+            attachment.setDisposition("attachment");
 
-        MimeMessage message = mailSender.createMimeMessage();
+            mail.addAttachments(attachment);
 
-        MimeMessageHelper helper =
-                new MimeMessageHelper(
-                        message,
-                        true,
-                        StandardCharsets.UTF_8.name()
-                );
+            SendGrid sg = new SendGrid(System.getenv("SENDGRID_API_KEY"));
 
-        helper.setFrom("calendarheatmap@gmail.com");
-        helper.setTo(to);
-        helper.setSubject(subject);
-        helper.setText(body, false);
+            Request request = new Request();
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
 
-        helper.addAttachment(
-                "heatmap.png",
-                () -> new ByteArrayInputStream(imageBytes)
-        );
+            Response response = sg.api(request);
 
-        mailSender.send(message);
+            System.out.println("Mail sent: " + response.getStatusCode());
+
+        } catch (Exception e) {
+            System.out.println("SendGrid error: " + e.getMessage());
+        }
     }
 
-    // ✉️ Text-only mail (sender)
-    @SuppressWarnings("null")
-public void sendTextMail(
-            String to,
-            String subject,
-            String body) throws Exception {
+    // 📩 Simple text mail
+    public void sendTextMail(String to, String subject, String body) {
 
-        MimeMessage message = mailSender.createMimeMessage();
+        try {
+            Email from = new Email(FROM_EMAIL);
+            Email toEmail = new Email(to);
 
-        MimeMessageHelper helper =
-                new MimeMessageHelper(
-                        message,
-                        false,
-                        StandardCharsets.UTF_8.name()
-                );
+            Content content = new Content("text/plain", body);
+            Mail mail = new Mail(from, subject, toEmail, content);
 
-        helper.setFrom("calendarheatmap@gmail.com");
-        helper.setTo(to);
-        helper.setSubject(subject);
-        helper.setText(body, false);
+            SendGrid sg = new SendGrid(System.getenv("SENDGRID_API_KEY"));
 
-        mailSender.send(message);
+            Request request = new Request();
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+
+            sg.api(request);
+
+        } catch (Exception e) {
+            System.out.println("SendGrid error: " + e.getMessage());
+        }
     }
-    
 }
