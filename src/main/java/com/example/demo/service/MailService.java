@@ -5,7 +5,15 @@ import java.util.Base64;
 import org.springframework.stereotype.Service;
 
 import com.sendgrid.*;
+import com.sendgrid.SendGrid;
+import com.sendgrid.Request;
+import com.sendgrid.Response;
+import com.sendgrid.Method;
 
+import com.sendgrid.helpers.mail.Mail;
+import com.sendgrid.helpers.mail.objects.Email;
+import com.sendgrid.helpers.mail.objects.Content;
+import com.sendgrid.helpers.mail.objects.Attachments;
 @Service
 public class MailService {
 
